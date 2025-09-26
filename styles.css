@@ -1,0 +1,951 @@
+/* Reset và thiết lập cơ bản */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+:root {
+    --primary: #5b5fde;
+    --primary-dark: #4549b8;
+    --success: #22c55e;
+    --warning: #fb923c;
+    --danger: #f87171;
+    --bg: #0a0e27;
+    --bg-card: #151935;
+    --bg-card-hover: #1d2247;
+    --text: #ffffff;
+    --text-secondary: #94a3b8;
+    --border: #2a3050;
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --weather-hot: #f87171;
+    --weather-warm: #fb923c;
+    --weather-cool: #60a5fa;
+    --weather-cold: #a78bfa;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: linear-gradient(180deg, #0a0e27 0%, #151935 100%);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    overflow-x: hidden;
+}
+
+/* Tab Navigation */
+.tab-navigation {
+    display: flex;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 4px;
+    margin: 16px;
+    border: 1px solid var(--border);
+}
+
+.tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    color: var(--text);
+    background: rgba(91, 95, 222, 0.1);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(91, 95, 222, 0.3);
+}
+
+.tab-icon {
+    font-size: 1.2rem;
+}
+
+.tab-label {
+    font-weight: 600;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Swimming specific styles */
+.swimming-section {
+    padding: 16px;
+    background: var(--bg);
+}
+
+.swimming-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hover) 100%);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.swimming-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%);
+    /* Removed wave animation - static blue gradient bar */
+}
+
+@keyframes wave {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+}
+
+/* Removed wave animation */
+
+.swimming-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.swimming-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.swimming-time {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    background: rgba(10, 14, 39, 0.5);
+    padding: 4px 12px;
+    border-radius: 8px;
+}
+
+.condition-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.condition-item {
+    background: rgba(10, 14, 39, 0.3);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.condition-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.condition-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.condition-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.condition-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+/* Swimming condition colors */
+.condition-excellent { 
+    border-left: 4px solid #22c55e;
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+}
+.condition-good { 
+    border-left: 4px solid #3b82f6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+.condition-moderate { 
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+}
+.condition-poor { 
+    border-left: 4px solid #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+}
+
+.swimming-recommendation {
+    background: rgba(10, 14, 39, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.recommendation-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.recommendation-icon {
+    font-size: 1.5rem;
+}
+
+.recommendation-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.recommendation-text {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.wave-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.wave-item {
+    background: rgba(10, 14, 39, 0.3);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.wave-height-0 { color: #22c55e; } /* 0-0.5m - Tuyệt vời */
+.wave-height-1 { color: #3b82f6; } /* 0.5-1m - Tốt */
+.wave-height-2 { color: #f59e0b; } /* 1-1.5m - Trung bình */
+.wave-height-3 { color: #ef4444; } /* >1.5m - Kém */
+
+.uv-low { color: #22c55e; }
+.uv-moderate { color: #f59e0b; }
+.uv-high { color: #ef4444; }
+.uv-very-high { color: #dc2626; }
+
+.precip-none { color: #22c55e; }
+.precip-light { color: #3b82f6; }
+.precip-moderate { color: #f59e0b; }
+.precip-heavy { color: #ef4444; }
+
+.visibility-excellent { color: #22c55e; }
+.visibility-good { color: #3b82f6; }
+.visibility-moderate { color: #f59e0b; }
+.visibility-poor { color: #ef4444; }
+
+/* Quick times for swimming */
+.swimming-times {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.time-slot {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease;
+}
+
+.time-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.time-slot.recommended {
+    border: 2px solid #22c55e;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+.hourly-forecast {
+    margin-top: 20px;
+}
+
+.hourly-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 16px 0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.hourly-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.hour-card {
+    min-width: 120px;
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.hour-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.hour-temp {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.hour-precip {
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.hour-wave {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.hour-wind {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive adjustments for tabs */
+@media (max-width: 480px) {
+    .tab-label {
+        display: none;
+    }
+    
+    .tab-icon {
+        font-size: 1.4rem;
+    }
+    
+    .condition-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .swimming-times {
+        grid-template-columns: 1fr;
+    }
+}
+.container {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+
+/* Header - Mobile optimized */
+.header {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hover) 100%);
+    padding: 20px 16px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--warning) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+}
+
+.header p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Thông tin vị trí thời tiết */
+.location-info {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+/* Section workout hôm nay */
+.today-section {
+    padding: 16px;
+    background: var(--bg);
+}
+
+.today-card {
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-hover) 100%);
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.today-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--warning) 50%, var(--primary) 100%);
+    /* Removed animation - static gradient bar */
+}
+
+@keyframes shimmer {
+    0%, 100% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+}
+
+/* Removed shimmer animation */
+
+.today-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.today-badge {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    /* Removed pulse animation - static badge */
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+/* Removed pulse animation */
+
+.today-date {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.workout-main {
+    margin: 20px 0;
+}
+
+.workout-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.workout-distance {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--warning);
+    margin-bottom: 16px;
+}
+
+.workout-details {
+    background: rgba(10, 14, 39, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.detail-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-size: 1rem;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+/* Workout type badges */
+.workout-type {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.type-easy { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.type-interval { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+.type-tempo { background: rgba(251, 146, 60, 0.2); color: #fb923c; }
+.type-long { background: rgba(91, 95, 222, 0.2); color: #5b5fde; }
+.type-core { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.type-rest { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+/* Weather info trong today card */
+.today-weather {
+    background: rgba(10, 14, 39, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    border: 1px solid var(--border);
+}
+
+.weather-times {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.weather-time-slot {
+    background: rgba(10, 14, 39, 0.4);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(42, 48, 80, 0.5);
+}
+
+.time-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.time-weather {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.time-temp {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.time-icon {
+    font-size: 1.2rem;
+}
+
+.time-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+/* Màu nhiệt độ */
+.temp-hot { color: var(--weather-hot); }
+.temp-warm { color: var(--weather-warm); }
+.temp-cool { color: var(--weather-cool); }
+.temp-cold { color: var(--weather-cold); }
+
+.weather-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.weather-temp {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.weather-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: capitalize;
+}
+
+.weather-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.weather-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+}
+
+.weather-icon {
+    font-size: 1.2rem;
+}
+
+/* Quick stats - Mobile cards */
+.stats-section {
+    padding: 0 16px 16px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid var(--border);
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* Week view - Horizontal scroll for mobile */
+.week-section {
+    padding: 16px 0;
+    background: var(--bg);
+}
+
+.section-title {
+    padding: 0 16px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.week-scroll {
+    overflow-x: auto;
+    padding: 0 16px 16px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.week-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.week-container {
+    display: flex;
+    gap: 12px;
+    width: max-content;
+}
+
+.day-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 16px;
+    min-width: 140px;
+    border: 1px solid var(--border);
+    transition: transform 0.2s, background 0.2s;
+}
+
+.day-card:active {
+    transform: scale(0.98);
+    background: var(--bg-card-hover);
+}
+
+.day-card.is-today {
+    background: linear-gradient(135deg, rgba(91, 95, 222, 0.2) 0%, rgba(91, 95, 222, 0.1) 100%);
+    border: 2px solid var(--primary);
+}
+
+.day-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.day-date {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.day-workout {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.day-distance {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--warning);
+    margin-bottom: 12px;
+}
+
+.day-weather {
+    padding: 8px 12px;
+    background: rgba(10, 14, 39, 0.5);
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.day-weather-times {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.day-time-slot {
+    flex: 1;
+    text-align: center;
+}
+
+.day-time-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.day-time-temp {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.day-time-icon {
+    font-size: 0.85rem;
+}
+
+.day-temp {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.day-weather-desc {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+/* Loading và error states */
+.weather-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.weather-error {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--danger);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+/* No workout state */
+.no-workout {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.no-workout h2 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.no-workout p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Loading state */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    padding: 20px;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.mini-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Copyright footer */
+.copyright-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border);
+    padding: 20px 16px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.copyright-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.copyright-logo {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.internal-use {
+    font-size: 0.7rem;
+    color: rgba(148, 163, 184, 0.7);
+    font-style: italic;
+    margin-top: 8px;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+    .container {
+        max-width: 768px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .header {
+        border-radius: 16px;
+        margin-bottom: 20px;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .week-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        width: 100%;
+    }
+
+    .day-card {
+        min-width: unset;
+    }
+}
+
+/* iOS specific optimizations */
+@supports (-webkit-touch-callout: none) {
+    body {
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    .day-card:active {
+        -webkit-tap-highlight-color: rgba(91, 95, 222, 0.2);
+    }
+}
+
+/* Smooth scrolling */
+html {
+    scroll-behavior: smooth;
+}
