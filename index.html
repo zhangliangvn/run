@@ -14,9 +14,15 @@
         <div class="header">
             <h1>🏃‍♂️ Marathon Sub 4:30</h1>
             <p>Lịch tập luyện cá nhân</p>
-            <div class="location-info" id="locationInfo">
-                <span class="mini-spinner"></span>
-                <span>Đang xác định vị trí...</span>
+            <div class="header-controls">
+                <div class="location-info" id="locationInfo">
+                    <span class="mini-spinner"></span>
+                    <span>Đang xác định vị trí...</span>
+                </div>
+                <button class="refresh-button" id="refreshBtn" onclick="forceRefresh()">
+                    <span class="refresh-icon">🔄</span>
+                    <span class="refresh-text">Làm mới</span>
+                </button>
             </div>
         </div>
 

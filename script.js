@@ -24,7 +24,6 @@ let programInfo = {};
 function loadTrainingData() {
     try {
         if (typeof TRAINING_CONFIG !== 'undefined') {
-            // Load từ training-config.js
             programInfo = TRAINING_CONFIG.program;
             trainingData = TRAINING_CONFIG.workouts;
             
@@ -53,7 +52,7 @@ function getFallbackTrainingData() {
     return [
         {date:"26/09/2025",day:"Friday",workout:"Easy",distance:6,description:"6 km @6:30/km",notes:"Shake-out before weekend long run"},
         {date:"27/09/2025",day:"Saturday",workout:"Rest",distance:0,description:"Rest day",notes:""},
-        {date:"28/09/2025",day:"Sunday",workout:"Long run",distance:20,description:"20 km @6:20—6:30/km",notes:"2 gels, salt GU 1 cap/45—60'"}
+        {date:"28/09/2025",day:"Sunday",workout:"Long run",distance:20,description:"20 km @6:20–6:30/km",notes:"2 gels, salt GU 1 cap/45–60'"}
     ];
 }
 
@@ -399,18 +398,31 @@ class SwimmingService {
                 }
             }
 
+            // Ưu tiên dùng OpenWeatherMap cho precipitation data
+            let precipitationData = null;
+            if (weatherCache.current && weatherCache.forecast) {
+                precipitationData = {
+                    current: {
+                        precipitation: weatherCache.current.rain?.['1h'] || 0,
+                        probability: this.estimatePrecipitationProbability(weatherCache.current)
+                    },
+                    forecast: weatherCache.forecast
+                };
+            }
+
             // Lấy cả marine data thực và weather data
             const [marineData, weatherData] = await Promise.all([
-                this.fetchMarineData(location.lat, location.lon),
+                this.fetchMarineData(location.lat, location.lon).catch(() => null),
                 this.fetchDetailedWeather(location.lat, location.lon)
             ]);
 
             swimmingCache = {
                 marine: marineData,
                 weather: weatherData,
+                precipitation: precipitationData, // Dữ liệu mưa từ OpenWeatherMap
                 lastUpdate: now,
                 location: location,
-                isRealMarine: true // Dữ liệu marine thực từ API!
+                isRealMarine: !!marineData
             };
 
             return swimmingCache;
@@ -433,6 +445,7 @@ class SwimmingService {
                 return {
                     marine: marineData,
                     weather: weatherData,
+                    precipitation: null,
                     lastUpdate: Date.now(),
                     location: location,
                     isWindBased: true
@@ -443,6 +456,22 @@ class SwimmingService {
         }
     }
 
+    static estimatePrecipitationProbability(currentWeather) {
+        const clouds = currentWeather.clouds?.all || 0;
+        const humidity = currentWeather.main?.humidity || 0;
+        const hasRain = (currentWeather.rain?.['1h'] || 0) > 0;
+        const weatherId = currentWeather.weather?.[0]?.id || 800;
+
+        if (hasRain) return 90;
+        if (weatherId >= 200 && weatherId < 300) return 85; // Thunderstorm
+        if (weatherId >= 300 && weatherId < 400) return 70; // Drizzle
+        if (weatherId >= 500 && weatherId < 600) return 80; // Rain
+        if (clouds > 80 && humidity > 85) return 60;
+        if (clouds > 60 && humidity > 75) return 40;
+        if (clouds > 40 && humidity > 65) return 25;
+        return 10;
+    }
+
     static createMarineFromWind(weatherData) {
         // Tạo dữ liệu sóng từ tốc độ gió (công thức Beaufort scale)
         const times = weatherData.hourly.time;
@@ -450,12 +479,6 @@ class SwimmingService {
         const windDirections = weatherData.hourly.wind_direction_10m;
         
         const waveHeights = windSpeeds.map(windSpeed => {
-            // Công thức ước tính độ cao sóng từ gió (khu vực gần bờ)
-            // Wind 0-5 km/h: sóng 0-0.2m
-            // Wind 5-15 km/h: sóng 0.2-0.5m  
-            // Wind 15-25 km/h: sóng 0.5-1.0m
-            // Wind >25 km/h: sóng >1.0m
-            
             if (windSpeed <= 5) return 0.1 + (windSpeed / 5) * 0.1; // 0.1-0.2m
             else if (windSpeed <= 15) return 0.2 + ((windSpeed - 5) / 10) * 0.3; // 0.2-0.5m
             else if (windSpeed <= 25) return 0.5 + ((windSpeed - 15) / 10) * 0.5; // 0.5-1.0m
@@ -463,7 +486,6 @@ class SwimmingService {
         });
 
         const wavePeriods = windSpeeds.map(windSpeed => {
-            // Chu kỳ sóng từ gió (giây)
             return Math.max(2, Math.min(6, 2 + windSpeed * 0.1));
         });
 
@@ -471,46 +493,13 @@ class SwimmingService {
             hourly: {
                 time: times,
                 wave_height: waveHeights,
-                wave_direction: windDirections, // Sóng cùng hướng gió
+                wave_direction: windDirections,
                 wave_period: wavePeriods,
-                wind_wave_height: waveHeights.map(h => h * 0.8), // Wind wave nhỏ hơn
+                wind_wave_height: waveHeights.map(h => h * 0.8),
                 wind_wave_direction: windDirections,
                 wind_wave_period: wavePeriods
             },
-            isFromWind: true // Đánh dấu là tạo từ wind data
-        };
-    }
-
-    static createFallbackMarineData() {
-        // Tạo 48 giờ dữ liệu marine giả định (dành cho khu vực inland/không có dữ liệu marine)
-        const hours = 48;
-        const now = new Date();
-        const times = [];
-        const waveHeights = [];
-        const waveDirections = [];
-        const wavePeriods = [];
-
-        for (let i = 0; i < hours; i++) {
-            const time = new Date(now.getTime() + i * 60 * 60 * 1000);
-            times.push(time.toISOString());
-            
-            // Sóng nhỏ hơn cho khu vực gần bờ/hồ/sông (0.1-0.5m)
-            waveHeights.push(0.1 + Math.random() * 0.4);
-            waveDirections.push(Math.random() * 360);
-            wavePeriods.push(2 + Math.random() * 3); // 2-5 giây
-        }
-
-        return {
-            hourly: {
-                time: times,
-                wave_height: waveHeights,
-                wave_direction: waveDirections,
-                wave_period: wavePeriods,
-                wind_wave_height: waveHeights.map(h => h * 0.8), // gió tạo sóng nhỏ hơn
-                wind_wave_direction: waveDirections,
-                wind_wave_period: wavePeriods
-            },
-            isFallback: true
+            isFromWind: true
         };
     }
 
@@ -527,7 +516,6 @@ class SwimmingService {
             const time = new Date(now.getTime() + i * 60 * 60 * 1000);
             times.push(time.toISOString());
             
-            // Dữ liệu thời tiết cơ bản
             const hour = time.getHours();
             const baseTemp = 25 + Math.sin((hour - 6) * Math.PI / 12) * 5; // 20-30°C
             temps.push(baseTemp);
@@ -536,29 +524,30 @@ class SwimmingService {
             uvIndices.push(hour >= 6 && hour <= 18 ? Math.max(0, (hour - 6) * 0.8) : 0);
         }
 
-        const marineData = this.createFallbackMarineData();
-
         return {
-            marine: marineData,
+            marine: {
+                hourly: {
+                    time: times,
+                    wave_height: Array(hours).fill(0.3),
+                    wave_direction: Array(hours).fill(90),
+                    wave_period: Array(hours).fill(4)
+                }
+            },
             weather: {
                 hourly: {
                     time: times,
                     temperature_2m: temps,
                     relative_humidity_2m: Array(hours).fill(70),
-                    visibility: visibilities.map(v => v * 1000), // convert to meters
+                    visibility: visibilities.map(v => v * 1000),
                     uv_index: uvIndices,
                     wind_speed_10m: windSpeeds,
-                    wind_direction_10m: Array(hours).fill(90), // East wind
-                    weather_code: Array(hours).fill(1) // Clear sky
+                    wind_direction_10m: Array(hours).fill(90),
+                    precipitation: Array(hours).fill(0),
+                    precipitation_probability: Array(hours).fill(10)
                 }
             },
             lastUpdate: Date.now(),
-            location: weatherCache.location || {
-                lat: CONFIG.DEFAULT_LOCATION.lat,
-                lon: CONFIG.DEFAULT_LOCATION.lon,
-                name: CONFIG.DEFAULT_LOCATION.name,
-                isDefault: true
-            },
+            location: weatherCache.location || CONFIG.DEFAULT_LOCATION,
             isEmergencyFallback: true
         };
     }
@@ -605,7 +594,7 @@ class SwimmingService {
         else if (visibility >= 2) { score += 4; issues.push('Tầm nhìn kém'); }
         else { score += 0; issues.push('Tầm nhìn rất kém'); }
 
-        // Đánh giá UV (5% tổng điểm) - ít quan trọng hơn
+        // Đánh giá UV (5% tổng điểm)
         if (uvIndex <= 2) score += 5;
         else if (uvIndex <= 5) { score += 4; issues.push('UV trung bình'); }
         else if (uvIndex <= 7) { score += 2; issues.push('UV cao'); }
@@ -628,7 +617,7 @@ class SwimmingService {
         } else {
             condition = 'poor';
             recommendation = '🚫 Không nên bơi. Nguy cơ: ' + issues.join(', ');
-            icon = '❌';
+            icon = '⌐';
         }
 
         return { condition, recommendation, icon, score, issues };
@@ -834,6 +823,10 @@ class UIRenderer {
                 const eveningTempClass = WeatherService.getTemperatureColor(eveningTemp);
                 const icon = WeatherService.getWeatherIcon(weather.weather[0].icon);
                 
+                // Hiển thị dữ liệu mưa real-time từ OpenWeatherMap
+                const precipitation = weather.rain?.['1h'] || 0;
+                const precipitationDesc = precipitation > 0 ? `${precipitation.toFixed(1)}mm/h` : 'Không mưa';
+                
                 weatherHtml = `
                     <div class="today-weather">
                         <div class="weather-times">
@@ -856,16 +849,16 @@ class UIRenderer {
                         </div>
                         <div class="weather-details">
                             <div class="weather-item">
+                                <span class="weather-icon">🌧️</span>
+                                <span>${precipitationDesc}</span>
+                            </div>
+                            <div class="weather-item">
                                 <span class="weather-icon">💧</span>
                                 <span>${weather.main.humidity}%</span>
                             </div>
                             <div class="weather-item">
                                 <span class="weather-icon">💨</span>
                                 <span>${Math.round(weather.wind.speed * 3.6)} km/h</span>
-                            </div>
-                            <div class="weather-item">
-                                <span class="weather-icon">👁️</span>
-                                <span>${Math.round(weather.visibility / 1000)} km</span>
                             </div>
                             <div class="weather-item">
                                 <span class="weather-icon">🌡️</span>
@@ -876,7 +869,6 @@ class UIRenderer {
                 `;
             }
         } else {
-            // Placeholder nhẹ thay vì loading spinner
             weatherHtml = `
                 <div class="today-weather">
                     <div class="weather-times">
@@ -966,7 +958,6 @@ class UIRenderer {
             let weatherHtml = '';
             if (weatherData) {
                 if (day.isToday && weatherData.current) {
-                    // Hôm nay - dùng current weather với 2 khung giờ
                     const runningTimes = WeatherService.getCurrentRunningTimes(weatherData.current);
                     if (runningTimes) {
                         const morningTemp = Math.round(runningTimes.morning.main.temp);
@@ -993,7 +984,6 @@ class UIRenderer {
                         `;
                     }
                 } else if (weatherData.forecast) {
-                    // Các ngày khác - dùng forecast với 2 khung giờ
                     const forecasts = WeatherService.getRunningTimeForecasts(weatherData.forecast, day.date);
                     if (forecasts && (forecasts.morning || forecasts.evening)) {
                         let morningHtml = '<div class="day-time-slot"><div class="day-time-label">🌅 Sáng</div><div style="font-size:0.7rem;color:#94a3b8;">N/A</div></div>';
@@ -1133,7 +1123,7 @@ class SwimmingRenderer {
                         <span class="swimming-time">Open-Meteo Marine API</span>
                     </div>
                     <div class="recommendation-text" style="color: #22c55e;">
-                        Sử dụng dữ liệu sóng biển và thời tiết thực tế từ Open-Meteo. Độ chính xác cao!
+                        Dữ liệu mưa real-time từ OpenWeatherMap + dữ liệu sóng biển từ Open-Meteo. Độ chính xác cao!
                     </div>
                 </div>
             `;
@@ -1144,6 +1134,18 @@ class SwimmingRenderer {
             const timeHour = new Date(time).getHours();
             return timeHour >= currentHour;
         }) || 0;
+
+        // Ưu tiên dữ liệu mưa từ OpenWeatherMap nếu có
+        let precipitation = 0;
+        let precipitationProb = 0;
+        
+        if (swimmingData.precipitation?.current) {
+            precipitation = swimmingData.precipitation.current.precipitation;
+            precipitationProb = swimmingData.precipitation.current.probability;
+        } else {
+            precipitation = swimmingData.weather.hourly.precipitation?.[currentIndex] || 0;
+            precipitationProb = swimmingData.weather.hourly.precipitation_probability?.[currentIndex] || 0;
+        }
 
         const current = {
             temp: swimmingData.weather.hourly.temperature_2m[currentIndex] || 25,
@@ -1156,8 +1158,8 @@ class SwimmingRenderer {
             waveDirection: swimmingData.marine?.hourly?.wave_direction?.[currentIndex] || 90,
             wavePeriod: swimmingData.marine?.hourly?.wave_period?.[currentIndex] || 5,
             seaTemp: swimmingData.marine?.hourly?.sea_surface_temperature?.[currentIndex] || null,
-            precipitation: swimmingData.weather.hourly.precipitation?.[currentIndex] || 0,
-            precipitationProb: swimmingData.weather.hourly.precipitation_probability?.[currentIndex] || 0
+            precipitation: precipitation,
+            precipitationProb: precipitationProb
         };
 
         const condition = SwimmingService.getSwimmingCondition(
@@ -1268,14 +1270,18 @@ class SwimmingRenderer {
                 windSpeed: swimmingData.weather.hourly.wind_speed_10m[timeIndex] || 10,
                 visibility: (swimmingData.weather.hourly.visibility[timeIndex] || 10000) / 1000,
                 uvIndex: swimmingData.weather.hourly.uv_index[timeIndex] || 3,
-                waveHeight: swimmingData.marine?.hourly?.wave_height?.[timeIndex] || 0.3
+                waveHeight: swimmingData.marine?.hourly?.wave_height?.[timeIndex] || 0.3,
+                precipitation: swimmingData.weather.hourly.precipitation?.[timeIndex] || 0,
+                precipitationProb: swimmingData.weather.hourly.precipitation_probability?.[timeIndex] || 0
             };
 
             const condition = SwimmingService.getSwimmingCondition(
                 data.waveHeight,
                 data.windSpeed,
                 data.visibility,
-                data.uvIndex
+                data.uvIndex,
+                data.precipitation,
+                data.precipitationProb
             );
 
             const isRecommended = condition.condition === 'excellent' || condition.condition === 'good';
@@ -1333,7 +1339,9 @@ class SwimmingRenderer {
                     windSpeed: swimmingData.weather.hourly.wind_speed_10m[timeIndex] || 10,
                     visibility: (swimmingData.weather.hourly.visibility[timeIndex] || 10000) / 1000,
                     uvIndex: swimmingData.weather.hourly.uv_index[timeIndex] || 3,
-                    waveHeight: swimmingData.marine?.hourly?.wave_height?.[timeIndex] || 0.3
+                    waveHeight: swimmingData.marine?.hourly?.wave_height?.[timeIndex] || 0.3,
+                    precipitation: swimmingData.weather.hourly.precipitation?.[timeIndex] || 0,
+                    precipitationProb: swimmingData.weather.hourly.precipitation_probability?.[timeIndex] || 0
                 });
             }
         }
@@ -1383,6 +1391,9 @@ class MarathonTrainingApp {
         this.touchStartY = 0;
         this.touchEndY = 0;
         this.currentTab = 'training';
+        this.isRefreshing = false;
+        this.lastRefreshTime = 0;
+        this.refreshCooldown = 5000; // 5 giây cooldown
         this.initEventListeners();
     }
 
@@ -1432,6 +1443,7 @@ class MarathonTrainingApp {
                     ${UIRenderer.renderWeekView(weekWorkouts, weatherData)}
                 `;
                 document.getElementById('mainContent').innerHTML = htmlWithWeather;
+                this.showLastUpdateTime(weatherData.lastUpdate);
             }
         });
     }
@@ -1514,51 +1526,166 @@ class MarathonTrainingApp {
                 e.preventDefault();
             }
         }, { passive: false });
-
-        // Add to home screen prompt (for PWA)
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            this.deferredPrompt = e;
-        });
     }
 
     handleSwipe() {
         const swipeDistance = this.touchStartY - this.touchEndY;
         // Pull to refresh
         if (swipeDistance < -100 && window.scrollY === 0) {
-            this.refreshData();
+            this.forceRefresh();
         }
     }
 
-    refreshData() {
-        // Clear both caches and refresh
-        weatherCache = {
-            current: null,
-            forecast: null,
-            lastUpdate: null,
-            location: null
-        };
+    async forceRefresh() {
+        // Kiểm tra cooldown
+        const now = Date.now();
+        if (now - this.lastRefreshTime < this.refreshCooldown) {
+            const remainingTime = Math.ceil((this.refreshCooldown - (now - this.lastRefreshTime)) / 1000);
+            this.showToast(`Vui lòng đợi ${remainingTime}s`, 'warning');
+            return;
+        }
+
+        if (this.isRefreshing) return;
+
+        this.isRefreshing = true;
+        this.lastRefreshTime = now;
         
-        swimmingCache = {
-            marine: null,
-            weather: null,
-            lastUpdate: null,
-            location: null
-        };
-        
+        const refreshBtn = document.getElementById('refreshBtn');
         const locationInfo = document.getElementById('locationInfo');
-        locationInfo.innerHTML = `
-            <span class="mini-spinner"></span>
-            <span>Đang làm mới...</span>
-        `;
-        
-        setTimeout(() => {
-            if (this.currentTab === 'training') {
-                this.renderTraining();
-            } else if (this.currentTab === 'swimming') {
-                this.renderSwimming();
+
+        try {
+            // Update UI state
+            if (refreshBtn) {
+                refreshBtn.classList.add('loading');
+                refreshBtn.querySelector('.refresh-text').textContent = 'Đang tải...';
             }
-        }, 300);
+
+            if (locationInfo) {
+                locationInfo.innerHTML = `
+                    <span class="mini-spinner"></span>
+                    <span>🔄 Đang làm mới real-time...</span>
+                `;
+            }
+
+            // Clear ALL caches hoàn toàn
+            weatherCache = {
+                current: null,
+                forecast: null,
+                lastUpdate: null,
+                location: null
+            };
+            
+            swimmingCache = {
+                marine: null,
+                weather: null,
+                lastUpdate: null,
+                location: null
+            };
+
+            // Force reload với bypass cache
+            const location = await WeatherService.getCurrentLocation();
+            
+            // Add timestamp để bypass cache hoàn toàn
+            const timestamp = Date.now();
+            const [currentWeather, forecast] = await Promise.all([
+                fetch(`${CONFIG.WEATHER_BASE_URL}/weather?lat=${location.lat}&lon=${location.lon}&appid=${CONFIG.WEATHER_API_KEY}&units=metric&lang=vi&_t=${timestamp}`)
+                    .then(res => res.json()),
+                fetch(`${CONFIG.WEATHER_BASE_URL}/forecast?lat=${location.lat}&lon=${location.lon}&appid=${CONFIG.WEATHER_API_KEY}&units=metric&lang=vi&_t=${timestamp}`)
+                    .then(res => res.json())
+            ]);
+
+            // Update cache với dữ liệu mới
+            const locationName = location.isDefault ? 
+                CONFIG.DEFAULT_LOCATION.name : 
+                await WeatherService.getLocationName(location.lat, location.lon);
+
+            weatherCache = {
+                current: currentWeather,
+                forecast: forecast,
+                lastUpdate: Date.now(),
+                location: { ...location, name: locationName }
+            };
+
+            // Update UI
+            const locationIcon = location.isDefault ? '📍' : '🎯';
+            const locationText = location.isDefault ? 
+                `${locationIcon} ${locationName} (mặc định)` : 
+                `${locationIcon} ${locationName}`;
+            
+            if (locationInfo) {
+                locationInfo.innerHTML = `${locationText} <span style="color: #22c55e; font-size: 0.7rem;">● Real-time</span>`;
+            }
+
+            // Re-render current tab với dữ liệu mới
+            if (this.currentTab === 'training') {
+                await this.renderTraining();
+            } else if (this.currentTab === 'swimming') {
+                await this.renderSwimming();
+            }
+
+            this.showToast('✅ Dữ liệu đã được cập nhật real-time', 'success');
+
+        } catch (error) {
+            console.error('Force refresh error:', error);
+            
+            if (locationInfo) {
+                locationInfo.innerHTML = `⚠️ Lỗi khi tải dữ liệu real-time`;
+            }
+            
+            this.showToast('❌ Không thể kết nối để lấy dữ liệu mới', 'error');
+        } finally {
+            // Reset UI state
+            this.isRefreshing = false;
+            if (refreshBtn) {
+                refreshBtn.classList.remove('loading');
+                refreshBtn.querySelector('.refresh-text').textContent = 'Làm mới';
+            }
+        }
+    }
+
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `refresh-toast refresh-toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Auto remove sau 4 giây
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.style.animation = 'toastSlideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 4000);
+    }
+
+    showLastUpdateTime(lastUpdate) {
+        if (!lastUpdate) return;
+        
+        const updateTime = new Date(lastUpdate);
+        const now = new Date();
+        const diffMinutes = Math.floor((now - updateTime) / 1000 / 60);
+        
+        let timeText = '';
+        if (diffMinutes < 1) {
+            timeText = 'vừa xong';
+        } else if (diffMinutes < 60) {
+            timeText = `${diffMinutes} phút trước`;
+        } else {
+            const diffHours = Math.floor(diffMinutes / 60);
+            timeText = `${diffHours} giờ trước`;
+        }
+
+        const locationInfo = document.getElementById('locationInfo');
+        if (locationInfo && !locationInfo.innerHTML.includes('Real-time')) {
+            const currentHTML = locationInfo.innerHTML;
+            locationInfo.innerHTML = `${currentHTML} <span style="color: #94a3b8; font-size: 0.7rem;">• ${timeText}</span>`;
+        }
     }
 
     scheduleUpdate() {
@@ -1606,21 +1733,142 @@ class MarathonTrainingApp {
 
         // Schedule automatic updates at midnight
         this.scheduleUpdate();
+    }
+}
 
-        // Service worker for offline support (optional)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // You can register a service worker here for offline support
-                // navigator.serviceWorker.register('/sw.js');
-            });
+// ============================================
+// FORCE REFRESH FUNCTION FOR HTML
+// ============================================
+let isRefreshing = false;
+let lastRefreshTime = 0;
+const refreshCooldown = 5000; // 5 seconds
+
+function forceRefresh() {
+    const now = Date.now();
+    
+    // Check cooldown
+    if (now - lastRefreshTime < refreshCooldown) {
+        const remainingTime = Math.ceil((refreshCooldown - (now - lastRefreshTime)) / 1000);
+        showToast(`Vui lòng đợi ${remainingTime}s`, 'warning');
+        return;
+    }
+
+    if (isRefreshing) return;
+
+    if (typeof app !== 'undefined' && app.forceRefresh) {
+        app.forceRefresh();
+    } else {
+        // Fallback manual refresh
+        handleManualRefresh();
+    }
+}
+
+async function handleManualRefresh() {
+    isRefreshing = true;
+    lastRefreshTime = Date.now();
+    
+    const refreshBtn = document.getElementById('refreshBtn');
+    const locationInfo = document.getElementById('locationInfo');
+
+    try {
+        // Update UI
+        if (refreshBtn) {
+            refreshBtn.classList.add('loading');
+            refreshBtn.querySelector('.refresh-text').textContent = 'Đang tải...';
+        }
+
+        if (locationInfo) {
+            locationInfo.innerHTML = `
+                <span class="mini-spinner"></span>
+                <span>🔄 Đang làm mới real-time...</span>
+            `;
+        }
+
+        // Clear caches
+        weatherCache = {
+            current: null,
+            forecast: null,
+            lastUpdate: null,
+            location: null
+        };
+
+        swimmingCache = {
+            marine: null,
+            weather: null,
+            lastUpdate: null,
+            location: null
+        };
+
+        // Force reload weather data
+        await WeatherService.loadWeatherData();
+
+        // Re-render current tab
+        if (typeof app !== 'undefined') {
+            if (app.currentTab === 'training') {
+                await app.renderTraining();
+            } else if (app.currentTab === 'swimming') {
+                await app.renderSwimming();
+            }
+        }
+
+        showToast('✅ Dữ liệu đã được cập nhật real-time', 'success');
+
+    } catch (error) {
+        console.error('Refresh error:', error);
+        showToast('❌ Không thể kết nối để lấy dữ liệu mới', 'error');
+        
+        if (locationInfo) {
+            locationInfo.innerHTML = `⚠️ Lỗi khi tải dữ liệu real-time`;
+        }
+    } finally {
+        isRefreshing = false;
+        
+        if (refreshBtn) {
+            refreshBtn.classList.remove('loading');
+            refreshBtn.querySelector('.refresh-text').textContent = 'Làm mới';
         }
     }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `refresh-toast refresh-toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-message">${message}</span>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.animation = 'toastSlideIn 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 4000);
 }
 
 // ============================================
 // APPLICATION INITIALIZATION
 // ============================================
+let app;
+
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new MarathonTrainingApp();
+    app = new MarathonTrainingApp();
     app.init();
+    
+    // Touch feedback for refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        }, { passive: true });
+        
+        refreshBtn.addEventListener('touchend', function() {
+            this.style.transform = '';
+        }, { passive: true });
+    }
 });
